@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Family Budget Lite</title>
+  <meta name="description" content="Удобный трекер семейного бюджета: доходы, расходы, категории и цели накоплений.">
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --primary: #0f766e;
+      --primary-dark: #0b5f59;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.45;
+    }
+
+    .container {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #0f766e, #14b8a6);
+      color: #fff;
+      padding: 56px 0 48px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .hero h1 {
+      font-size: clamp(28px, 4vw, 42px);
+      margin: 0 0 10px;
+    }
+
+    .hero p {
+      margin: 0 0 18px;
+      font-size: 17px;
+      max-width: 620px;
+    }
+
+    .hero-points {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .chip {
+      background: rgba(255, 255, 255, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 13px;
+    }
+
+    .hero-card {
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      border-radius: var(--radius);
+      padding: 20px;
+      backdrop-filter: blur(2px);
+    }
+
+    .hero-card h2 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+
+    .hero-card ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .hero-card li { margin-bottom: 6px; }
+
+    main {
+      margin-top: -22px;
+      padding-bottom: 36px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 12px;
+    }
+
+    .summary strong {
+      display: block;
+      margin-top: 4px;
+      font-size: 23px;
+    }
+
+    .muted { color: var(--muted); font-size: 13px; }
+    .income { color: var(--success); }
+    .expense { color: var(--danger); }
+    .balance { color: #2563eb; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 14px;
+    }
+
+    h2 { margin: 0 0 12px; font-size: 22px; }
+    h3 { margin: 0 0 10px; font-size: 18px; }
+
+    label {
+      display: block;
+      margin-top: 10px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    input, select, button {
+      width: 100%;
+      margin-top: 6px;
+      border-radius: 11px;
+      border: 1px solid #cbd5e1;
+      padding: 11px 12px;
+      font-size: 15px;
+      font-family: inherit;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      font-weight: 600;
+      background: var(--primary);
+      color: #fff;
+    }
+
+    button:hover { background: var(--primary-dark); }
+    .button-secondary { background: #334155; }
+    .button-danger { background: var(--danger); }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th, td {
+      border-bottom: 1px solid #e2e8f0;
+      padding: 10px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .bar-bg {
+      width: 100%;
+      height: 10px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar {
+      height: 10px;
+      background: linear-gradient(90deg, #14b8a6, #0f766e);
+    }
+
+    .goal-box {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: end;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 8px;
+      font-size: 12px;
+      background: #f1f5f9;
+      color: #334155;
+    }
+
+    .receipt-preview {
+      width: 100%;
+      max-height: 300px;
+      object-fit: contain;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      margin-top: 10px;
+      display: none;
+      background: #fff;
+    }
+
+    textarea {
+      width: 100%;
+      margin-top: 6px;
+      border-radius: 11px;
+      border: 1px solid #cbd5e1;
+      padding: 11px 12px;
+      font-size: 14px;
+      font-family: inherit;
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .note {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .recommendation {
+      background: #ecfeff;
+      border-left: 4px solid #14b8a6;
+      padding: 10px 12px;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .recommendation.warning {
+      background: #fff7ed;
+      border-left-color: #f97316;
+    }
+
+    footer {
+      text-align: center;
+      color: var(--muted);
+      padding: 26px 0;
+      font-size: 13px;
+    }
+
+    @media (max-width: 840px) {
+      .hero-grid { grid-template-columns: 1fr; }
+      .actions { grid-template-columns: 1fr; }
+      .goal-box { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="container hero-grid">
+      <div>
+        <h1>Семейный бюджет</h1>
+        <p>Фиксируйте доходы и расходы, отслеживайте баланс, анализируйте категории и держите фокус на цели накоплений.</p>
+        <div class="hero-points">
+          <span class="chip">Сохраняется в браузере</span>
+          <span class="chip">Быстрое добавление операций</span>
+          <span class="chip">Мини-аналитика по категориям</span>
+        </div>
+      </div>
+      <aside class="hero-card">
+        <h2>Что уже есть</h2>
+        <ul>
+          <li>Учет доходов и расходов</li>
+          <li>Фильтр по типу операций</li>
+          <li>Экспорт и импорт в JSON</li>
+          <li>Прогресс по финансовой цели</li>
+        </ul>
+      </aside>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card summary">
+      <div>
+        <div class="muted">Общий доход</div>
+        <strong id="totalIncome" class="income">0 ₽</strong>
+      </div>
+      <div>
+        <div class="muted">Общий расход</div>
+        <strong id="totalExpense" class="expense">0 ₽</strong>
+      </div>
+      <div>
+        <div class="muted">Текущий баланс</div>
+        <strong id="balance" class="balance">0 ₽</strong>
+      </div>
+      <div>
+        <div class="muted">Расходы от дохода</div>
+        <strong id="expensePercent">0%</strong>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h3>Новая операция</h3>
+        <label for="type">Тип</label>
+        <select id="type">
+          <option value="income">Доход</option>
+          <option value="expense">Расход</option>
+        </select>
+
+        <label for="amount">Сумма, ₽</label>
+        <input id="amount" type="number" min="1" placeholder="Например: 6500">
+
+        <label for="category">Категория</label>
+        <select id="category">
+          <option>Зарплата</option>
+          <option>Продукты</option>
+          <option>Жилье</option>
+          <option>Транспорт</option>
+          <option>Здоровье</option>
+          <option>Кафе</option>
+          <option>Маркетплейсы</option>
+          <option>Развлечения</option>
+          <option>Накопления</option>
+          <option>Другое</option>
+        </select>
+
+        <label for="comment">Комментарий</label>
+        <input id="comment" type="text" placeholder="Краткое описание операции">
+
+        <label for="date">Дата</label>
+        <input id="date" type="date">
+
+        <div class="actions">
+          <button id="addButton">Добавить</button>
+          <button id="clearAllButton" class="button-danger">Очистить все</button>
+        </div>
+      </article>
+
+      <article class="card">
+        <h3>Фильтр и данные</h3>
+        <label for="filterType">Показать операции</label>
+        <select id="filterType">
+          <option value="all">Все</option>
+          <option value="income">Только доходы</option>
+          <option value="expense">Только расходы</option>
+        </select>
+
+        <div class="actions">
+          <button id="exportButton" class="button-secondary">Экспорт JSON</button>
+          <label class="button-secondary" style="display:inline-flex;align-items:center;justify-content:center;margin:6px 0 0;border-radius:11px;padding:11px 12px;cursor:pointer;">
+            Импорт JSON
+            <input id="importInput" type="file" accept=".json" style="display:none">
+          </label>
+        </div>
+
+        <p class="muted" style="margin-top: 12px;">Локальное хранение: данные доступны только в этом браузере.</p>
+
+        <hr style="border:none;border-top:1px solid #e2e8f0;margin:14px 0;">
+
+        <h3 style="margin-top:0;">Финансовая цель</h3>
+        <div class="goal-box">
+          <div>
+            <label for="goalAmount">Цель накоплений, ₽</label>
+            <input id="goalAmount" type="number" min="0" placeholder="Например: 100000">
+          </div>
+          <button id="saveGoalButton">Сохранить цель</button>
+        </div>
+
+        <p id="goalStatus" class="muted" style="margin:10px 0 8px;">Цель не задана.</p>
+        <div class="bar-bg"><div id="goalProgress" class="bar" style="width:0%"></div></div>
+      </article>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h3>Чек: OCR и QR</h3>
+        <label for="receiptFile">Загрузите фото чека</label>
+        <input id="receiptFile" type="file" accept="image/*,.txt">
+        <img id="receiptPreview" class="receipt-preview" alt="Предпросмотр чека">
+
+        <div class="actions">
+          <button id="recognizeReceiptButton" class="button-secondary">Распознать текст</button>
+          <button id="scanQrButton" class="button-secondary">Считать QR-код</button>
+        </div>
+
+        <label for="receiptText">Текст чека / данные QR</label>
+        <textarea id="receiptText" placeholder="Сюда попадет распознанный текст."></textarea>
+
+        <label for="receiptAmount">Найденная сумма, ₽</label>
+        <input id="receiptAmount" type="number" min="0" step="0.01" placeholder="Если не нашлось, введите вручную">
+
+        <label for="receiptCategory">Категория расхода</label>
+        <select id="receiptCategory">
+          <option>Продукты</option>
+          <option>Маркетплейсы</option>
+          <option>Одежда</option>
+          <option>Здоровье</option>
+          <option>Транспорт</option>
+          <option>Кафе</option>
+          <option>Другое</option>
+        </select>
+
+        <button id="addReceiptExpenseButton">Добавить чек как расход</button>
+        <p class="note">Проверка чека через ФНС/ОФД здесь не выполняется: данные добавляются в бюджет по найденной сумме.</p>
+      </article>
+
+      <article class="card">
+        <h3>Рекомендации по бюджету</h3>
+        <div id="recommendations"></div>
+      </article>
+    </section>
+
+    <section class="card">
+      <h3>История операций</h3>
+      <div class="tag" id="historyCounter">0 записей</div>
+      <table style="margin-top: 10px;">
+        <thead>
+          <tr>
+            <th>Дата</th>
+            <th>Тип</th>
+            <th>Категория</th>
+            <th>Комментарий</th>
+            <th>Сумма</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="transactionTable"></tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h3>Расходы по категориям</h3>
+      <div id="stats"></div>
+    </section>
+  </main>
+
+  <footer>
+    Family Budget Lite • Готово к публикации как статический сайт
+  </footer>
+
+  <script>
+    const STORAGE_KEY = "familyBudgetLite.transactions";
+    const GOAL_KEY = "familyBudgetLite.goal";
+    let transactions = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    let goal = Number(localStorage.getItem(GOAL_KEY) || "0");
+    let uploadedReceiptImage = null;
+
+    const dateInput = document.getElementById("date");
+    dateInput.valueAsDate = new Date();
+
+    const byId = (id) => document.getElementById(id);
+    const formatMoney = (v) => new Intl.NumberFormat("ru-RU").format(v) + " ₽";
+
+    function saveTransactions() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
+    }
+
+    function saveGoal() {
+      localStorage.setItem(GOAL_KEY, String(goal));
+    }
+
+    function addDirectTransaction(type, amount, category, comment, date) {
+      transactions.push({
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        type,
+        amount,
+        category,
+        comment,
+        date
+      });
+      saveTransactions();
+      render();
+    }
+
+    function addTransaction() {
+      const type = byId("type").value;
+      const amount = Number(byId("amount").value);
+      const category = byId("category").value.trim() || "Другое";
+      const comment = byId("comment").value.trim();
+      const date = byId("date").value || new Date().toISOString().slice(0, 10);
+
+      if (!amount || amount <= 0) {
+        alert("Введите корректную сумму.");
+        return;
+      }
+
+      transactions.push({
+        id: Date.now(),
+        type,
+        amount,
+        category,
+        comment,
+        date
+      });
+
+      byId("amount").value = "";
+      byId("comment").value = "";
+      saveTransactions();
+      render();
+    }
+
+    function removeTransaction(id) {
+      transactions = transactions.filter((item) => item.id !== id);
+      saveTransactions();
+      render();
+    }
+
+    function clearAll() {
+      if (!confirm("Удалить все операции?")) return;
+      transactions = [];
+      saveTransactions();
+      render();
+    }
+
+    function exportData() {
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        goal,
+        transactions
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "family-budget-export.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importData(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (!Array.isArray(parsed.transactions)) {
+            throw new Error("Некорректный формат");
+          }
+          transactions = parsed.transactions.filter((item) => item && item.id && item.amount);
+          goal = Number(parsed.goal || 0);
+          byId("goalAmount").value = goal > 0 ? String(goal) : "";
+          saveTransactions();
+          saveGoal();
+          render();
+          alert("Импорт завершен.");
+        } catch (err) {
+          alert("Не удалось импортировать JSON-файл.");
+          console.error(err);
+        }
+      };
+      reader.readAsText(file, "utf-8");
+    }
+
+    function saveGoalFromInput() {
+      const value = Number(byId("goalAmount").value);
+      goal = value > 0 ? value : 0;
+      saveGoal();
+      renderGoal();
+    }
+
+    function handleReceiptFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const preview = byId("receiptPreview");
+      const receiptText = byId("receiptText");
+
+      if (file.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          uploadedReceiptImage = e.target.result;
+          preview.src = uploadedReceiptImage;
+          preview.style.display = "block";
+          receiptText.value = "";
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      if (file.type === "text/plain") {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          receiptText.value = e.target.result;
+          findReceiptAmount();
+        };
+        reader.readAsText(file, "utf-8");
+        return;
+      }
+
+      alert("Поддерживаются изображения и txt-файлы.");
+    }
+
+    async function recognizeReceipt() {
+      if (!uploadedReceiptImage) {
+        alert("Сначала загрузите фото чека.");
+        return;
+      }
+
+      const output = byId("receiptText");
+      output.value = "Распознаю текст чека...";
+
+      try {
+        const result = await Tesseract.recognize(uploadedReceiptImage, "rus+eng");
+        output.value = result.data.text || "";
+        findReceiptAmount();
+      } catch (error) {
+        output.value = "";
+        console.error(error);
+        alert("Не удалось распознать чек, попробуйте другое фото.");
+      }
+    }
+
+    function scanReceiptQR() {
+      if (!uploadedReceiptImage) {
+        alert("Сначала загрузите фото чека с QR.");
+        return;
+      }
+
+      const image = new Image();
+      image.onload = function () {
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        canvas.width = image.width;
+        canvas.height = image.height;
+        context.drawImage(image, 0, 0);
+
+        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, canvas.width, canvas.height);
+        if (!code) {
+          alert("QR-код не найден на изображении.");
+          return;
+        }
+
+        parseQRReceipt(code.data);
+      };
+      image.src = uploadedReceiptImage;
+    }
+
+    function parseQRReceipt(qrText) {
+      const params = new URLSearchParams(qrText.replace(/\?/g, "&"));
+      const sum = params.get("s");
+      const date = params.get("t");
+      const fn = params.get("fn");
+      const fd = params.get("i");
+      const fp = params.get("fp");
+
+      let text = "Данные из QR:\n";
+      if (sum) {
+        byId("receiptAmount").value = Number(sum).toFixed(2);
+        text += "Сумма: " + sum + " ₽\n";
+      }
+      if (date) text += "Дата: " + date + "\n";
+      if (fn) text += "ФН: " + fn + "\n";
+      if (fd) text += "ФД: " + fd + "\n";
+      if (fp) text += "ФПД: " + fp + "\n";
+      text += "\nИсходная строка:\n" + qrText;
+      byId("receiptText").value = text;
+    }
+
+    function findReceiptAmount() {
+      const text = byId("receiptText").value || "";
+      const lines = text.split("\n");
+      const keywords = ["итог", "сумма", "оплата", "total", "к оплате"];
+      let possibleAmounts = [];
+
+      lines.forEach((line) => {
+        const lower = line.toLowerCase();
+        if (!keywords.some((k) => lower.includes(k))) return;
+        const numbers = line.match(/\d+[.,]?\d*/g);
+        if (!numbers) return;
+        numbers.forEach((n) => {
+          const value = Number(n.replace(",", "."));
+          if (!Number.isNaN(value) && value > 0) {
+            possibleAmounts.push(value);
+          }
+        });
+      });
+
+      if (possibleAmounts.length === 0) {
+        const all = text.match(/\d+[.,]?\d*/g) || [];
+        possibleAmounts = all
+          .map((n) => Number(n.replace(",", ".")))
+          .filter((v) => !Number.isNaN(v) && v > 0);
+      }
+
+      if (possibleAmounts.length > 0) {
+        byId("receiptAmount").value = Math.max(...possibleAmounts).toFixed(2);
+      }
+    }
+
+    function addReceiptExpense() {
+      const amount = Number(byId("receiptAmount").value);
+      const category = byId("receiptCategory").value || "Другое";
+      const text = byId("receiptText").value || "";
+      if (!amount || amount <= 0) {
+        alert("Введите или проверьте сумму чека.");
+        return;
+      }
+
+      addDirectTransaction(
+        "expense",
+        amount,
+        category,
+        text ? "Расход по чеку" : "Расход",
+        new Date().toISOString().slice(0, 10)
+      );
+
+      byId("receiptAmount").value = "";
+      byId("receiptText").value = "";
+      byId("receiptFile").value = "";
+      byId("receiptPreview").style.display = "none";
+      uploadedReceiptImage = null;
+      alert("Чек добавлен в расходы.");
+    }
+
+    function renderSummary() {
+      const income = transactions
+        .filter((t) => t.type === "income")
+        .reduce((sum, t) => sum + t.amount, 0);
+      const expense = transactions
+        .filter((t) => t.type === "expense")
+        .reduce((sum, t) => sum + t.amount, 0);
+      const balance = income - expense;
+      const percent = income > 0 ? Math.round((expense / income) * 100) : 0;
+
+      byId("totalIncome").textContent = formatMoney(income);
+      byId("totalExpense").textContent = formatMoney(expense);
+      byId("balance").textContent = formatMoney(balance);
+      byId("expensePercent").textContent = percent + "%";
+
+      renderGoal(balance);
+    }
+
+    function renderGoal(balance = 0) {
+      const status = byId("goalStatus");
+      const progress = byId("goalProgress");
+      if (!goal || goal <= 0) {
+        status.textContent = "Цель не задана.";
+        progress.style.width = "0%";
+        return;
+      }
+
+      const safeBalance = Math.max(0, balance);
+      const value = Math.min(100, Math.round((safeBalance / goal) * 100));
+      status.textContent = "Накоплено " + formatMoney(safeBalance) + " из " + formatMoney(goal) + " (" + value + "%)";
+      progress.style.width = value + "%";
+    }
+
+    function renderTable() {
+      const tbody = byId("transactionTable");
+      const filter = byId("filterType").value;
+      const filtered = transactions
+        .filter((t) => filter === "all" ? true : t.type === filter)
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      byId("historyCounter").textContent = filtered.length + " записей";
+      tbody.innerHTML = "";
+      if (filtered.length === 0) {
+        tbody.innerHTML = "<tr><td colspan='6'>Операций пока нет.</td></tr>";
+        return;
+      }
+
+      filtered.forEach((item) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${item.date || "-"}</td>
+          <td>${item.type === "income" ? "Доход" : "Расход"}</td>
+          <td>${item.category || "-"}</td>
+          <td>${item.comment || "-"}</td>
+          <td class="${item.type === "income" ? "income" : "expense"}">${formatMoney(item.amount)}</td>
+          <td><button style="padding:6px 9px;width:auto;" class="button-danger" data-id="${item.id}">Удалить</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      tbody.querySelectorAll("button[data-id]").forEach((btn) => {
+        btn.addEventListener("click", () => removeTransaction(Number(btn.dataset.id)));
+      });
+    }
+
+    function renderStats() {
+      const stats = byId("stats");
+      const expenses = transactions.filter((t) => t.type === "expense");
+      if (expenses.length === 0) {
+        stats.innerHTML = "<p class='muted'>Расходов пока нет.</p>";
+        return;
+      }
+
+      const total = expenses.reduce((sum, t) => sum + t.amount, 0);
+      const grouped = {};
+      expenses.forEach((item) => {
+        grouped[item.category] = (grouped[item.category] || 0) + item.amount;
+      });
+
+      const entries = Object.entries(grouped).sort((a, b) => b[1] - a[1]);
+      stats.innerHTML = "";
+
+      entries.forEach(([category, amount]) => {
+        const percent = Math.round((amount / total) * 100);
+        const row = document.createElement("div");
+        row.style.marginBottom = "10px";
+        row.innerHTML = `
+          <div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:4px;">
+            <span>${category}</span>
+            <span>${formatMoney(amount)} (${percent}%)</span>
+          </div>
+          <div class="bar-bg"><div class="bar" style="width:${percent}%"></div></div>
+        `;
+        stats.appendChild(row);
+      });
+    }
+
+    function getCategoryAmount(categoryName) {
+      return transactions
+        .filter((t) => t.type === "expense" && t.category === categoryName)
+        .reduce((sum, t) => sum + t.amount, 0);
+    }
+
+    function getBiggestExpenseCategory() {
+      const expenses = transactions.filter((t) => t.type === "expense");
+      if (expenses.length === 0) return null;
+
+      const grouped = {};
+      expenses.forEach((item) => {
+        grouped[item.category] = (grouped[item.category] || 0) + item.amount;
+      });
+
+      const sorted = Object.entries(grouped).sort((a, b) => b[1] - a[1]);
+      return { category: sorted[0][0], amount: sorted[0][1] };
+    }
+
+    function renderRecommendations() {
+      const block = byId("recommendations");
+      const totalIncome = transactions
+        .filter((t) => t.type === "income")
+        .reduce((sum, t) => sum + t.amount, 0);
+      const totalExpense = transactions
+        .filter((t) => t.type === "expense")
+        .reduce((sum, t) => sum + t.amount, 0);
+      const balance = totalIncome - totalExpense;
+      const expensePercent = totalIncome > 0 ? Math.round((totalExpense / totalIncome) * 100) : 0;
+
+      if (transactions.length === 0) {
+        block.innerHTML = "<div class='recommendation'>Добавьте первые операции, чтобы получить советы.</div>";
+        return;
+      }
+
+      const messages = [];
+      if (totalIncome === 0 && totalExpense > 0) {
+        messages.push({ text: "Сейчас есть только расходы. Добавьте доходы для корректной картины бюджета.", warning: true });
+      }
+      if (expensePercent > 90) {
+        messages.push({ text: "Расходы превышают 90% доходов. Проверьте регулярные траты и обязательные платежи.", warning: true });
+      } else if (expensePercent >= 70) {
+        messages.push({ text: "Расходы высокие. Реалистичная цель - снизить их на 5-10% в следующем месяце.", warning: true });
+      } else if (expensePercent > 0) {
+        messages.push({ text: "Бюджет выглядит устойчиво. Можно усилить накопления и долгосрочные цели.", warning: false });
+      }
+      if (balance < 0) {
+        messages.push({ text: "Баланс отрицательный. Начните оптимизацию с самой крупной категории расходов.", warning: true });
+      }
+
+      const biggest = getBiggestExpenseCategory();
+      if (biggest) {
+        messages.push({
+          text: "Самая затратная категория: " + biggest.category + " - " + formatMoney(biggest.amount) + ".",
+          warning: false
+        });
+      }
+
+      const marketplace = getCategoryAmount("Маркетплейсы");
+      if (totalExpense > 0 && marketplace / totalExpense > 0.2) {
+        messages.push({ text: "Маркетплейсы занимают большую долю. Полезно отложить покупку на 24 часа перед оплатой.", warning: true });
+      }
+
+      const cafe = getCategoryAmount("Кафе");
+      if (totalExpense > 0 && cafe / totalExpense > 0.15) {
+        messages.push({ text: "Расходы на кафе заметны. Частичная замена на домашние приемы пищи снизит траты.", warning: true });
+      }
+
+      if (messages.length === 0) {
+        messages.push({ text: "Рекомендации появятся после накопления данных по доходам и расходам.", warning: false });
+      }
+
+      block.innerHTML = messages
+        .map((m) => "<div class='recommendation" + (m.warning ? " warning" : "") + "'>" + m.text + "</div>")
+        .join("");
+    }
+
+    function render() {
+      renderSummary();
+      renderTable();
+      renderStats();
+      renderRecommendations();
+    }
+
+    byId("addButton").addEventListener("click", addTransaction);
+    byId("clearAllButton").addEventListener("click", clearAll);
+    byId("filterType").addEventListener("change", renderTable);
+    byId("exportButton").addEventListener("click", exportData);
+    byId("importInput").addEventListener("change", (event) => importData(event.target.files[0]));
+    byId("saveGoalButton").addEventListener("click", saveGoalFromInput);
+    byId("receiptFile").addEventListener("change", handleReceiptFile);
+    byId("recognizeReceiptButton").addEventListener("click", recognizeReceipt);
+    byId("scanQrButton").addEventListener("click", scanReceiptQR);
+    byId("addReceiptExpenseButton").addEventListener("click", addReceiptExpense);
+
+    byId("goalAmount").value = goal > 0 ? String(goal) : "";
+    render();
+  </script>
+</body>
+</html>
