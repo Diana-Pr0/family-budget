@@ -59,6 +59,7 @@
     }
 
     .hero {
+      position: relative;
       background: linear-gradient(135deg, var(--hero-grad-start), var(--hero-grad-end));
       color: #fff;
       padding: 56px 0 48px;
@@ -277,21 +278,90 @@
     }
 
     .theme-toggle-wrap {
-      display: flex;
-      justify-content: flex-end;
-      margin: 12px 0 0;
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 20;
     }
 
     #themeToggleButton {
-      width: auto;
-      padding: 8px 12px;
-      font-size: 13px;
-      background: rgba(15, 23, 42, 0.25);
-      border: 1px solid rgba(255, 255, 255, 0.35);
+      width: 48px;
+      height: 48px;
+      margin: 0;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      backdrop-filter: blur(5px);
+      transition: transform 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease;
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.2);
+    }
+
+    #themeToggleButton:active {
+      transform: scale(0.94);
     }
 
     #themeToggleButton:hover {
-      background: rgba(15, 23, 42, 0.38);
+      background: rgba(15, 23, 42, 0.42);
+      transform: translateY(-1px);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.28);
+    }
+
+    .theme-icon {
+      position: relative;
+      width: 24px;
+      height: 24px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .theme-icon .sun,
+    .theme-icon .moon {
+      position: absolute;
+      font-size: 19px;
+      line-height: 1;
+      transition: transform 0.35s ease, opacity 0.35s ease;
+    }
+
+    .theme-icon .sun {
+      transform: scale(1) rotate(0deg);
+      opacity: 1;
+    }
+
+    .theme-icon .moon {
+      transform: scale(0.45) rotate(-40deg);
+      opacity: 0;
+    }
+
+    body.dark-theme .theme-icon .sun {
+      transform: scale(0.45) rotate(40deg);
+      opacity: 0;
+    }
+
+    body.dark-theme .theme-icon .moon {
+      transform: scale(1) rotate(0deg);
+      opacity: 1;
+    }
+
+    body.dark-theme #themeToggleButton {
+      background: rgba(11, 18, 32, 0.55);
+      border-color: rgba(148, 163, 184, 0.4);
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
     }
 
     footer {
@@ -306,17 +376,128 @@
       .actions { grid-template-columns: 1fr; }
       .goal-box { grid-template-columns: 1fr; }
     }
+
+    @media (max-width: 640px) {
+      .container {
+        width: calc(100% - 20px);
+      }
+
+      .hero {
+        padding: 34px 0 26px;
+      }
+
+      .hero p {
+        font-size: 15px;
+      }
+
+      .hero-card {
+        padding: 16px;
+      }
+
+      .chip {
+        font-size: 12px;
+        padding: 6px 10px;
+      }
+
+      main {
+        margin-top: -14px;
+        padding-bottom: 24px;
+      }
+
+      .card {
+        padding: 14px;
+        border-radius: 14px;
+      }
+
+      .summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .summary strong {
+        font-size: 20px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      h2 {
+        font-size: 20px;
+      }
+
+      h3 {
+        font-size: 17px;
+      }
+
+      input,
+      select,
+      button,
+      textarea {
+        font-size: 16px;
+      }
+
+      #themeToggleButton {
+        width: 44px;
+        height: 44px;
+      }
+
+      table,
+      thead,
+      tbody,
+      th,
+      td,
+      tr {
+        display: block;
+      }
+
+      thead {
+        display: none;
+      }
+
+      tbody tr {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        margin-top: 10px;
+        padding: 6px 10px;
+        background: var(--card);
+      }
+
+      tbody td {
+        border-bottom: 1px solid var(--line);
+        padding: 8px 0;
+      }
+
+      tbody td:last-child {
+        border-bottom: none;
+      }
+
+      tbody td::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 2px;
+      }
+    }
   </style>
 </head>
 <body>
   <header class="hero">
+    <div class="theme-toggle-wrap">
+      <button id="themeToggleButton" type="button" aria-label="Включить темную тему">
+        <span class="theme-icon" aria-hidden="true">
+          <span class="sun">☀️</span>
+          <span class="moon">🌙</span>
+        </span>
+        <span class="sr-only">Переключить тему</span>
+      </button>
+    </div>
     <div class="container hero-grid">
       <div>
         <h1>Семейный бюджет</h1>
         <p>Фиксируйте доходы и расходы, отслеживайте баланс, анализируйте категории и держите фокус на цели накоплений.</p>
-        <div class="theme-toggle-wrap">
-          <button id="themeToggleButton" type="button">Темная тема</button>
-        </div>
         <div class="hero-points">
           <span class="chip">Сохраняется в браузере</span>
           <span class="chip">Быстрое добавление операций</span>
@@ -514,7 +695,7 @@
       document.body.classList.toggle("dark-theme", isDark);
       const button = byId("themeToggleButton");
       if (button) {
-        button.textContent = isDark ? "Светлая тема" : "Темная тема";
+        button.setAttribute("aria-label", isDark ? "Включить светлую тему" : "Включить темную тему");
       }
     }
 
@@ -837,12 +1018,12 @@
       filtered.forEach((item) => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td>${item.date || "-"}</td>
-          <td>${item.type === "income" ? "Доход" : "Расход"}</td>
-          <td>${item.category || "-"}</td>
-          <td>${item.comment || "-"}</td>
-          <td class="${item.type === "income" ? "income" : "expense"}">${formatMoney(item.amount)}</td>
-          <td><button style="padding:6px 9px;width:auto;" class="button-danger" data-id="${item.id}">Удалить</button></td>
+          <td data-label="Дата">${item.date || "-"}</td>
+          <td data-label="Тип">${item.type === "income" ? "Доход" : "Расход"}</td>
+          <td data-label="Категория">${item.category || "-"}</td>
+          <td data-label="Комментарий">${item.comment || "-"}</td>
+          <td data-label="Сумма" class="${item.type === "income" ? "income" : "expense"}">${formatMoney(item.amount)}</td>
+          <td data-label="Действие"><button style="padding:6px 9px;width:auto;" class="button-danger" data-id="${item.id}">Удалить</button></td>
         `;
         tbody.appendChild(tr);
       });
